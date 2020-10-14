@@ -111,4 +111,3 @@ if err:=pool.Close();err!=nil{
 - 协程池不适用于死循环任务。
 - `gribbon`在分配完用户提交的`task`后，“发条”回归，只需维护`head`节点，再次分配亦是如此。
 - `gribbon`面对长延迟的`task`无法体现复用能力，`worker`处于忙碌状态无法回收，不超过用户设置或库默认最大容量的情况下会开辟新的`worker`进行`task`调度。
-# gribbon
