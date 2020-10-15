@@ -6,9 +6,7 @@ import (
 )
 
 type iWorker interface {
-	init(context.Context, interface{})
-	submit(func(context.Context))
-	submitWithArg(func(context.Context, interface{}))
+	submit(*task)
 	isWorking() bool
 	run()
 	runWithArg()

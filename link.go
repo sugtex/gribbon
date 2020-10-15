@@ -32,52 +32,54 @@ func (g *goLink) Len() uint8 {
 }
 
 func (g *goLink) Submit(ctx context.Context, f func(context.Context)) error {
-	if g.isArgLink() {
+	if f == nil || g.isArgLink() {
 		return errWrongSubmit
 	}
+
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.isClose {
 		return errClosed
 	}
+	task := newTask(ctx, nil, f, nil)
 
 	isFind, node := g.tryForeachIdleWorker()
 	if isFind {
-		node.init(ctx, nil)
-		node.submit(f)
+		node.submit(task)
 		return nil
 	}
 
-	newNode := newNode(newWorker(ctx, nil), nil)
+	newNode := newNode(newWorker(), nil)
 	if err := g.tryCreateNew(node, newNode, newNode.run); err != nil {
 		return err
 	}
-	newNode.submit(f)
+	newNode.submit(task)
 	return nil
 }
 
 func (g *goLink) SubmitWithArg(ctx context.Context, arg interface{}, f func(context.Context, interface{})) error {
-	if !g.isArgLink() {
+	if f == nil || !g.isArgLink() {
 		return errWrongSubmit
 	}
+
 	g.lock.Lock()
 	defer g.lock.Unlock()
 	if g.isClose {
 		return errClosed
 	}
+	task := newTask(ctx, arg, nil, f)
 
 	isFind, node := g.tryForeachIdleWorker()
 	if isFind {
-		node.init(ctx, arg)
-		node.submitWithArg(f)
+		node.submit(task)
 		return nil
 	}
 
-	newNode := newNode(newWorker(ctx, arg), nil)
+	newNode := newNode(newWorker(), nil)
 	if err := g.tryCreateNew(node, newNode, newNode.runWithArg); err != nil {
 		return err
 	}
-	newNode.submitWithArg(f)
+	newNode.submit(task)
 	return nil
 }
 
@@ -117,7 +119,7 @@ func (g *goLink) tryForeachIdleWorker() (bool, *node) {
 }
 
 // 尝试构建node并返回
-func (g *goLink) tryCreateNew(pre *node, new *node, run func()) error {
+func (g *goLink) tryCreateNew(pre, new *node, run func()) error {
 	if g.isOverMaxCap() {
 		return errOverMaxCap
 	}

@@ -1,7 +1,5 @@
 package gribbon
 
-import "context"
-
 type node struct {
 	data *worker
 	next *node
@@ -19,16 +17,8 @@ func (n *node) isWorking() bool {
 	return n.data.isWorking()
 }
 
-func (n *node) init(c context.Context, a interface{}) {
-	n.data.init(c, a)
-}
-
-func (n *node) submit(f func(context.Context)) {
-	n.data.submit(f)
-}
-
-func (n *node) submitWithArg(f func(context.Context, interface{})) {
-	n.data.submitWithArg(f)
+func (n *node) submit(t *task) {
+	n.data.submit(t)
 }
 
 func (n *node) run() {

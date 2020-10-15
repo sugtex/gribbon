@@ -1,67 +1,50 @@
 package gribbon
 
 import (
-	"context"
 	"log"
 )
 
 type worker struct {
 	isBusy bool
-	ctx    context.Context
-
-	task chan func(context.Context)
-
-	arg         interface{}
-	taskWithArg chan func(context.Context, interface{})
+	taskC  chan *task
 }
 
-func newWorker(c context.Context, a interface{}) *worker {
+func newWorker() *worker {
 	return &worker{
-		isBusy:      false,
-		ctx:         c,
-		task:        make(chan func(context.Context)),
-		arg:         a,
-		taskWithArg: make(chan func(context.Context, interface{})),
+		isBusy: false,
+		taskC:  make(chan *task),
 	}
-}
-
-func (w *worker) init(c context.Context, a interface{}) {
-	w.ctx, w.arg = c, a
 }
 
 func (w *worker) isWorking() bool {
 	return w.isBusy
 }
 
-func (w *worker) submit(f func(context.Context)) {
-	w.task <- f
-}
-
-func (w *worker) submitWithArg(f func(context.Context, interface{})) {
-	w.taskWithArg <- f
+func (w *worker) submit(t *task) {
+	w.taskC <- t
 }
 
 func (w *worker) run() {
 	defer w.recoverPanic()
-	for t := range w.task {
+	for t := range w.taskC {
 		if t == nil {
 			return
 		}
-		w.isBusy = true
-		t(w.ctx)
-		w.reset()
+		w.pre()
+		t.run()
+		w.after()
 	}
 }
 
 func (w *worker) runWithArg() {
 	defer w.recoverPanic()
-	for t := range w.taskWithArg {
+	for t := range w.taskC {
 		if t == nil {
 			return
 		}
-		w.isBusy = true
-		t(w.ctx, w.arg)
-		w.reset()
+		w.pre()
+		t.runWithArg()
+		w.after()
 	}
 }
 
@@ -71,10 +54,14 @@ func (w *worker) recoverPanic() {
 	}
 }
 
-func (w *worker) close() {
-	w.task <- nil
+func (w *worker) pre() {
+	w.isBusy = true
 }
 
-func (w *worker) reset() {
-	w.isBusy, w.ctx = false, nil
+func (w *worker) close() {
+	w.taskC <- nil
+}
+
+func (w *worker) after() {
+	w.isBusy = false
 }
